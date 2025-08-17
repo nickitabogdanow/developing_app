@@ -1,9 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../models/database');
-const ChatController = require('../controllers/chatController');
-
-const chatController = new ChatController(null);
 
 // Создать новый проект
 router.post('/', async (req, res) => {
@@ -14,15 +11,18 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Name and client ID are required' });
     }
 
+    // Проверяем, что clientId является валидным UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(clientId)) {
+      return res.status(400).json({ error: 'Invalid client ID format' });
+    }
+
     const result = await pool.query(
       'INSERT INTO projects (name, description, client_id, budget, deadline) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [name, description, clientId, budget, deadline]
     );
 
     const project = result.rows[0];
-
-    // Инициализируем чат-комнаты для проекта
-    await chatController.initializeProjectRooms(project.id);
 
     res.json(project);
   } catch (error) {
